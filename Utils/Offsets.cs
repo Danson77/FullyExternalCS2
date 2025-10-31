@@ -141,9 +141,9 @@ public abstract class Offsets
 
             try
             {
-                Console.WriteLine("Downloading offsets from githubu.com/Danson77/CS2OFFsets/main/offsets.json");
-                sourceDataDw = await FetchJson("https://raw.githubusercontent.com/Danson77/CS2OFFsets/main/offsets.json");
-                sourceDataClient = await FetchJson("https://raw.githubusercontent.com/Danson77/CS2OFFsets/main/client_dll.json");
+                Console.WriteLine("Downloading offsets from github: Danson77 CS2 Json OFFsets");
+                sourceDataDw = await FetchJson("https://raw.githubusercontent.com/Danson77/FullyExternalCS2/main/Utils/Offsets_Json/offsets.json");
+                sourceDataClient = await FetchJson("https://raw.githubusercontent.com/Danson77/FullyExternalCS2/main/Utils/Offsets_Json/client_dll.json");
                 fromRemote = true;
                 Console.WriteLine("[Offsets] Loaded from remote.");
             }

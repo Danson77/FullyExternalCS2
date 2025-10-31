@@ -2,13 +2,13 @@
 
 -Hot Key:
 
-( ; ) - Show team too
-
-( # ) - Aimbot and triger at team too
-
 ( [ ) - turn off/on aimbot
 
 ( ] ) - turn off/on trigerbot
+
+( ; ) - Show team too
+
+( # ) - Aimbot and triger at team too
 
 ### Description
 -I made Gold out of this free source..... but.....
@@ -46,6 +46,7 @@ Other Features are also implemented, but I just removed them, put them in the NE
 - Hitsound (**_in the same folder with the cheat, there should be a file called "hit.wav"_**)
 - Basic Config with hotkeys. (If you want to change the default keys, watch the link and replace the keycode with whatever u
   want [Read this](https://github.com/lolp1/Process.NET/blob/ce9ac9cceb2afb30c9288495615c6f3aa34bc1f8/src/Process.NET/Native/Types/NativeEnums.cs#L235))
+
 
 
 

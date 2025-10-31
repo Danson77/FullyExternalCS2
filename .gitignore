@@ -1,6 +1,57 @@
-/obj
-/.vs/CS2_Danson77_HxH/FileContentIndex
-/.vs/CS2_Danson77_HxH/v17
-/.vs/CS2Cheat/DesignTimeBuild
-/bin/x64/Release/
-/bin/x64/Debug/
+#/obj
+#/.vs/CS2_Danson77_HxH/FileContentIndex
+#/.vs/CS2_Danson77_HxH/v17
+#/.vs/CS2Cheat/DesignTimeBuild
+#/bin/x64/Release/
+#/bin/x64/Debug/
+
+# Build output
+bin/
+obj/
+out/
+artifacts/
+
+# VS / Rider
+.vs/
+*.user
+*.suo
+*.sln.docstates
+*.DotSettings.user
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+
+# Logs / temp
+*.log
+*.tmp
+*.cache
+*.pid
+
+# OS/OneDrive noise
+Thumbs.db
+Desktop.ini
+*.lnk
+~$*
+*.tmp
+*.orig
+*.bak
+*.swp
+*.DS_Store
+*.stackdump
+
+# Tooling
+.idea/
+.vscode/
+
+# Publish
+*.publish.xml
+
+# If you vendor font/sound assets, keep them; otherwise uncomment:
+# assets/fonts/
+# assets/sounds/
+
+# If offsets are generated, ignore cache but keep source JSON:
+offsets/*.cache.json
