@@ -1,0 +1,55 @@
+{
+  "aimBot": true,
+  "bombTimer": true,
+  "espAimCrosshair": true,
+  "skeletonEsp": true,
+  "triggerBot": true,
+  "teamCheck": false,
+  "esp": {
+    "boxExtra": {
+      "enabled": true,
+      "showName": true,
+      "showHealthBar": true,
+      "showHealthText": true,
+      "showDistance": true,
+      "showWeaponIcon": true,
+      "showArmor": true,
+      "showVisibilityIndicator": true,
+      "showFlags": true,
+      "enemyColor": "FF8B0000",
+      "teamColor": "FF00008B",
+      "visibleAlpha": "FF",
+      "invisibleAlpha": "88"
+    },
+    "radar": {
+      "enabled": true,
+      "size": 340,
+      "x": 31,
+      "y": 30,
+      "maxDistance": 100,
+      "showLocalPlayer": false,
+      "showDirectionArrow": true,
+      "enemyColor": "FFFF0000",
+      "teamColor": "FF0000FF",
+      "visibleAlpha": "FF",
+      "invisibleAlpha": "88"
+    },
+    "aimCrosshair": {
+      "enabled": true,
+      "radius": 6,
+      "color": "FFFFFFFF",
+      "recoilScale": 2
+    }
+  },
+  "hitSound": {
+    "enabled": true,
+    "hitColor": "FFFFFFFF",
+    "headshotColor": "FFFFD700",
+    "hitText": "HIT",
+    "headshotText": "HEADSHOT",
+    "hitSoundFile": "assets/sounds/hit.wav",
+    "headshotSoundFile": "assets/sounds/headshot.wav",
+    "headshotDamageThreshold": 100,
+    "textDurationSeconds": 1.5
+  }
+}
