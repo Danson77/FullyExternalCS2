@@ -63,7 +63,7 @@ public abstract class Offsets
     public static int m_angEyeAngles;
     public static int m_CBodyComponent;
     public static int m_bGameRestart;
-
+    public static int m_iNumRoundKillsHeadshots;
     public static class engine2_dll
     {
         public static int dwNetworkGameClient;
@@ -228,10 +228,13 @@ public abstract class Offsets
             destData.m_bDormant = GetField(classes, "CGameSceneNode", "m_bDormant");
 
             destData.m_pActionTrackingServices = GetField(classes, "CCSPlayerController", "m_pActionTrackingServices");
+            destData.m_flTotalRoundDamageDealt = GetField(classes, "CCSPlayerController_ActionTrackingServices", "m_flTotalRoundDamageDealt");
+
             destData.m_iszPlayerName = GetField(classes, "CBasePlayerController", "m_iszPlayerName");
             destData.m_hPawn = GetField(classes, "CBasePlayerController", "m_hPawn");
             destData.m_iNumRoundKills = GetField(classes, "CCSPlayerController_ActionTrackingServices", "m_iNumRoundKills");
-            destData.m_flTotalRoundDamageDealt = GetField(classes, "CCSPlayerController_ActionTrackingServices", "m_flTotalRoundDamageDealt");
+
+            destData.m_iNumRoundKillsHeadshots = GetField(classes, "CCSPlayerController_ActionTrackingServices", "m_iNumRoundKillsHeadshots");
 
             destData.m_hLastAttacker = GetField(classes, "C_BreakableProp", "m_hLastAttacker");
             destData.m_bHasHelmet = GetField(classes, "CCSPlayer_ItemServices", "m_bHasHelmet");
@@ -302,7 +305,6 @@ public abstract class Offsets
         m_iShotsFired = data.m_iShotsFired;
         m_hPawn = data.m_hPawn;
         m_fFlags = data.m_fFlags;
-        dwLocalPlayerController = data.dwLocalPlayerController;
         dwViewMatrix = data.dwViewMatrix;
         dwViewAngles = data.dwViewAngles;
         dwEntityList = data.dwEntityList;
@@ -331,6 +333,7 @@ public abstract class Offsets
         m_bGameRestart = data.m_bGameRestart;
         m_vecOrigin = data.m_vecOrigin;
         m_pActionTrackingServices = data.m_pActionTrackingServices;
+        m_flTotalRoundDamageDealt = data.m_flTotalRoundDamageDealt;
 
         engine2_dll.dwNetworkGameClient = data.dwNetworkGameClient;
         engine2_dll.dwNetworkGameClient_serverTickCount = data.dwNetworkGameClient_serverTickCount;
@@ -344,6 +347,9 @@ public abstract class Offsets
         client_dll.dwViewMatrix = data.dwViewMatrix;
         client_dll.dwGameRules = data.dwGameRules;
 
+        dwLocalPlayerController = data.dwLocalPlayerController;
+        client_dll.dwLocalPlayerController = data.dwLocalPlayerController;
+        m_iNumRoundKillsHeadshots = data.m_iNumRoundKillsHeadshots;
     }
 
     #endregion

@@ -393,11 +393,11 @@ public class ModernGraphics : ThreadedServiceBase
                 if (config.Esp.BoxExtra.Enabled) BoxExtra.Draw(this);
                 if (config.Esp.Radar.Enabled) Radar.Draw(this);
                 //BombTimer.Draw(this);
-                if (config.HitSound.Enabled)
-                {
-                    HitSound.Process(this);
-                    HitSound.DrawHitTexts(this);
-                }
+                //if (config.HitSound.Enabled)
+                //{
+                //    HitSound.Process(this);
+                //    HitSound.DrawHitTexts(this);
+                //}
             }
             else if (hasWindow)
             {

@@ -332,11 +332,8 @@ public static class BoxExtra
     }
     public static void Draw(ModernGraphics graphics)
     {
-        HandleToggles(); // do this once per frame
-
         var fullConfig = ConfigManager.Load();
         var espConfig = fullConfig.Esp.BoxExtra;
-
         if (!espConfig.Enabled) return;
 
         var player = graphics.GameData.Player;
@@ -345,10 +342,12 @@ public static class BoxExtra
 
         foreach (var entity in entities)
         {
-            if (!entity.IsAlive() || entity.AddressBase == player.AddressBase) continue;
+            if (!entity.IsAlive() || entity.AddressBase == player.AddressBase)
+                continue;
 
-            bool isTeammate = entity.Team == player.Team;
-            if (!TeamVisible && fullConfig.TeamCheck && isTeammate) continue;
+            // ——— ENEMIES ONLY ———
+            if (entity.Team == player.Team)
+                continue;
 
             var bbox = GetEntityBoundingBox(player, entity);
             if (bbox == null) continue;
@@ -356,4 +355,5 @@ public static class BoxExtra
             DrawEntityEsp(graphics, player, entity, bbox.Value, espConfig);
         }
     }
+
 }

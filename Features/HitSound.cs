@@ -1,179 +1,184 @@
+﻿using CS2Cheat.Graphics;
+using CS2Cheat.Utils;
+using CS2Cheat.Utils.CFGManager;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
-using CS2Cheat.Data.Entity;
-using CS2Cheat.Graphics;
-using CS2Cheat.Utils;
 using System.Numerics;
-using CS2Cheat.Utils.CFGManager;
+using System.Threading.Tasks;
 
-namespace CS2Cheat.Features;
-
-public static class HitSound
+namespace CS2Cheat.Features
 {
-    private static int _lastDamage = 0;
-    private static DateTime _lastPlayTime = DateTime.MinValue;
-    private static readonly object _sync = new();
-
-    private class HitText
+    public static class HitSound
     {
-        public string Text { get; set; } = string.Empty;
-        public DateTime ExpireAt { get; set; } = DateTime.MinValue;
-        public Vector2 BasePosition { get; set; } = Vector2.Zero;
-        public float State { get; set; } = 0f;
-        public uint Color { get; set; } // ← Сохраняем цвет сразу
-    }
+        private static float _lastDamage = 0f;
+        private static int _lastHsCount = 0;
+        private static DateTime _lastCheck = DateTime.MinValue;
+        private static readonly object _sync = new();
 
-    private static readonly List<HitText> _hitTexts = new();
-    private static readonly object _textLock = new();
-
-    public static void Process(ModernGraphics graphics)
-    {
-        var gameProcess = graphics.GameProcess;
-        var player = graphics.GameData.Player;
-        if (gameProcess?.Process == null || player == null || !player.IsAlive())
-            return;
-
-        if ((DateTime.Now - _lastPlayTime).TotalMilliseconds < 80)
-            return;
-
-        var localController = gameProcess.ModuleClient?.Read<IntPtr>(Offsets.client_dll.dwLocalPlayerController) ?? IntPtr.Zero;
-        if (localController == IntPtr.Zero) return;
-
-        var actionTracking = gameProcess.Process.Read<IntPtr>(
-            IntPtr.Add(localController, Offsets.m_pActionTrackingServices)
-        );
-        if (actionTracking == IntPtr.Zero) return;
-
-        int currentDamage = gameProcess.Process.Read<int>(
-            IntPtr.Add(actionTracking, Offsets.m_flTotalRoundDamageDealt)
-        );
-
-        if (currentDamage > _lastDamage)
+        private class HitText
         {
-            var delta = currentDamage - _lastDamage;
+            public string Text { get; set; } = string.Empty;
+            public DateTime ExpireAt { get; set; }
+            public Vector2 BasePosition { get; set; }
+            public float State { get; set; }
+            public bool IsHeadshot { get; set; }
+        }
+
+        private static readonly List<HitText> _hitTexts = new();
+        private static readonly object _textLock = new();
+
+        public static void Process(Graphics.Graphics graphics)
+        {
+            var gp = graphics.GameProcess;
+            var player = graphics.GameData.Player;
+
+            if (gp?.Process == null || player == null || !player.IsAlive())
+                return;
+
+            // simple rate limit
+            if ((DateTime.UtcNow - _lastCheck).TotalMilliseconds < 30)
+                return;
+            _lastCheck = DateTime.UtcNow;
+
+            if (Offsets.client_dll.dwLocalPlayerController == 0 ||
+                Offsets.m_pActionTrackingServices == 0 ||
+                Offsets.m_flTotalRoundDamageDealt == 0)
+                return;
+
+            var localController = gp.ModuleClient?.Read<IntPtr>(Offsets.client_dll.dwLocalPlayerController) ?? IntPtr.Zero;
+            if (localController == IntPtr.Zero) return;
+
+            var actionTracking = gp.Process.Read<IntPtr>(localController + Offsets.m_pActionTrackingServices);
+            if (actionTracking == IntPtr.Zero) return;
+
+            float currentDamage;
+            try { currentDamage = gp.Process.Read<float>(actionTracking + Offsets.m_flTotalRoundDamageDealt); }
+            catch { return; }
+
+            int currentHsCount = _lastHsCount;
+            if (Offsets.m_iNumRoundKillsHeadshots != 0)
+            {
+                try { currentHsCount = gp.Process.Read<int>(actionTracking + Offsets.m_iNumRoundKillsHeadshots); }
+                catch { /* ignore */ }
+            }
+
+            if (currentDamage <= _lastDamage)
+            {
+                _lastHsCount = currentHsCount;
+                return;
+            }
+
+            int delta = (int)Math.Round(currentDamage - _lastDamage);
+            if (delta < 1 || delta > 200)
+            {
+                _lastDamage = currentDamage;
+                _lastHsCount = currentHsCount;
+                return;
+            }
+
             var cfg = ConfigManager.Load();
             var hsCfg = cfg.HitSound ?? new ConfigManager.HitSoundConfig();
-
-            if (!hsCfg.Enabled) return;
-
-            // Используем настраиваемый порог хедшота
-            bool isHeadshot = delta >= hsCfg.HeadshotDamageThreshold;
-            string text = isHeadshot ? hsCfg.HeadshotText : hsCfg.HitText;
-            string soundFile = isHeadshot ? hsCfg.HeadshotSoundFile : hsCfg.HitSoundFile;
-            uint baseColor = ParseColorHex(isHeadshot ? hsCfg.HeadshotColor : hsCfg.HitColor);
-
-            Console.WriteLine($"[HitSound] 💥 {text}! Damage: {currentDamage} (delta: {delta})");
-
-            PlayHitSound(soundFile);
-
-            // === ДОБАВЛЯЕМ ТЕКСТ С ЦВЕТОМ ===
-            var screenSize = gameProcess.WindowRectangleClient;
-            if (screenSize.Width <= 0 || screenSize.Height <= 0) return;
-
-            var center = new Vector2(screenSize.Width / 2f, screenSize.Height / 2f);
-
-            lock (_textLock)
+            if (!hsCfg.Enabled)
             {
-                _hitTexts.Add(new HitText
-                {
-                    Text = text,
-                    ExpireAt = DateTime.Now.AddSeconds(hsCfg.TextDurationSeconds),
-                    BasePosition = center,
-                    Color = baseColor // ← Сохраняем цвет
-                });
+                _lastDamage = currentDamage;
+                _lastHsCount = currentHsCount;
+                return;
             }
+
+            // headshot detection
+            bool isHeadshot;
+            if (Offsets.m_iNumRoundKillsHeadshots != 0)
+                isHeadshot = currentHsCount > _lastHsCount; // direct check
+            else
+                isHeadshot = delta >= hsCfg.HeadshotDamageThreshold; // fallback
+
+            string text = isHeadshot ? $"{hsCfg.HeadshotText} {delta}" : $"{hsCfg.HitText} {delta}";
+            string soundFile = isHeadshot ? hsCfg.HeadshotSoundFile : hsCfg.HitSoundFile;
+
+            // draw text center screen
+            var rect = gp.WindowRectangleClient;
+            if (rect.Width > 0 && rect.Height > 0)
+            {
+                var center = new Vector2(rect.Width / 2f, rect.Height / 2f);
+                lock (_textLock)
+                {
+                    _hitTexts.Add(new HitText
+                    {
+                        Text = text,
+                        BasePosition = center,
+                        ExpireAt = DateTime.UtcNow.AddSeconds(hsCfg.TextDurationSeconds),
+                        IsHeadshot = isHeadshot
+                    });
+                }
+            }
+
+            // play the correct sound immediately
+            PlayHitSound(soundFile);
 
             lock (_sync)
             {
                 _lastDamage = currentDamage;
-                _lastPlayTime = DateTime.Now;
+                _lastHsCount = currentHsCount;
             }
         }
-    }
 
-    public static void DrawHitTexts(ModernGraphics graphics)
-    {
-        var now = DateTime.Now;
-        lock (_textLock)
+        public static void DrawHitTexts(Graphics.Graphics graphics)
         {
-            for (int i = _hitTexts.Count - 1; i >= 0; i--)
+            var now = DateTime.UtcNow;
+            lock (_textLock)
             {
-                var hitText = _hitTexts[i];
-                if (now > hitText.ExpireAt)
+                for (int i = _hitTexts.Count - 1; i >= 0; i--)
                 {
-                    _hitTexts.RemoveAt(i);
-                    continue;
+                    var t = _hitTexts[i];
+                    if (now > t.ExpireAt)
+                    {
+                        _hitTexts.RemoveAt(i);
+                        continue;
+                    }
+
+                    t.State += 1f;
+                    float offsetX = 15f * MathF.Sin(t.State / 30f);
+                    float offsetY = -25f - (t.State * 1.4f);
+                    var pos = new Vector2(t.BasePosition.X + offsetX, t.BasePosition.Y + offsetY);
+
+                    float lifeMs = (float)(t.ExpireAt - now).TotalMilliseconds;
+                    const float totalLife = 0.0001f;
+                    float alpha = Math.Clamp(lifeMs / totalLife, 0.1f, 1f);
+
+                    byte a = (byte)(255 * alpha);
+                    var color = t.IsHeadshot
+                        ? new SharpDX.Color((byte)0, (byte)255, (byte)0, a)   // green
+                        : new SharpDX.Color((byte)255, (byte)0, (byte)0, a);  // red
+
+                    // black outline (drawn behind)
+                    var outlineColor = new SharpDX.Color((byte)0, (byte)0, (byte)0, a);
+                    const int outlineSize = 1; // pixel thickness
+
+                    graphics.FontConsolas36.DrawText(default, t.Text, (int)pos.X - outlineSize, (int)pos.Y, outlineColor);
+                    graphics.FontConsolas36.DrawText(default, t.Text, (int)pos.X + outlineSize, (int)pos.Y, outlineColor);
+                    graphics.FontConsolas36.DrawText(default, t.Text, (int)pos.X, (int)pos.Y - outlineSize, outlineColor);
+                    graphics.FontConsolas36.DrawText(default, t.Text, (int)pos.X, (int)pos.Y + outlineSize, outlineColor);
+
+                    // main text on top
+                    graphics.FontConsolas36.DrawText(default, t.Text, (int)pos.X, (int)pos.Y, color);
                 }
-
-                // Анимация
-                hitText.State += 1f;
-                float offsetX = 100f * MathF.Sin(hitText.State / 50f) - 50f;
-                float offsetY = -50f - (hitText.State * 2);
-                var pos = new Vector2(hitText.BasePosition.X + offsetX, hitText.BasePosition.Y + offsetY);
-
-                // Прозрачность
-                float lifeTime = (float)(hitText.ExpireAt - now).TotalMilliseconds;
-                float totalLife = 1500f; // 1.5s default, but we use config in Process
-                float alpha = Math.Clamp(1f - ((totalLife - lifeTime) / totalLife), 0.1f, 1f);
-
-                // Используем сохранённый цвет
-                byte a = (byte)(255 * alpha);
-                uint rgb = hitText.Color & 0x00FFFFFFu;
-                uint color = ((uint)a << 24) | rgb;
-
-                graphics.DrawText(hitText.Text, pos.X, pos.Y, color, fontSize: 32, useCustomFont: true);
             }
         }
-    }
 
-    private static void PlayHitSound(string soundFile)
-    {
-        try
+
+        private static void PlayHitSound(string soundFile)
         {
-            var path = soundFile;
-            if (!Path.IsPathRooted(path))
-                path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path.Replace('/', Path.DirectorySeparatorChar));
-
-            if (!File.Exists(path))
+            try
             {
-                Console.WriteLine($"[HitSound] ❌ Sound not found: {path}");
-                return;
+                // Let the mixer handle overlap and “no queue”
+                AudioEngine.Play(soundFile, volume: 1.0f);
             }
-
-            _ = Task.Run(() =>
+            catch (Exception ex)
             {
-                try
-                {
-                    using var player = new System.Media.SoundPlayer(path);
-                    player.PlaySync();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[HitSound] Playback error: {ex.Message}");
-                }
-            });
+                Console.WriteLine($"[HitSound] Error: {ex.Message}");
+            }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[HitSound] Error: {ex.Message}");
-        }
-    }
 
-    private static uint ParseColorHex(string hex)
-    {
-        if (string.IsNullOrWhiteSpace(hex)) return 0xFFFFFFFFu;
-        hex = hex.Trim().TrimStart('#').TrimStart('0', 'x', 'X');
-        if (hex.Length > 8) hex = hex.Substring(hex.Length - 8);
-        if (hex.Length == 6) hex = "FF" + hex; // добавляем альфу
-        try
-        {
-            return Convert.ToUInt32(hex, 16);
-        }
-        catch
-        {
-            return 0xFFFFFFFFu;
-        }
     }
 }

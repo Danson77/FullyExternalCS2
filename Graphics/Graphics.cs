@@ -1,10 +1,11 @@
-﻿using System.Windows.Threading;
-using CS2Cheat.Core.Data;
+﻿using CS2Cheat.Core.Data;
 using CS2Cheat.Data.Game;
 using CS2Cheat.Features;
 using CS2Cheat.Utils;
+using CS2Cheat.Utils.CFGManager;
 using SharpDX;
 using SharpDX.Direct3D9;
+using System.Windows.Threading;
 using static System.Windows.Application;
 using Color = SharpDX.Color;
 using Font = SharpDX.Direct3D9.Font;
@@ -42,6 +43,7 @@ public class Graphics : ThreadedServiceBase
     public Font FontConsolas36 { get; private set; }
     private List<Vertex> Vertices { get; } = [];
 
+    private volatile ConfigManager _config = ConfigManager.Load();
 
     public override void Dispose()
     {
@@ -186,12 +188,18 @@ public class Graphics : ThreadedServiceBase
 
     private void Draw()
     {
+        var config = _config; // Используем кэш — не читаем с диска!
         // draw here
         EspAimCrosshair.Draw(this);
         WindowOverlay.Draw(GameProcess, this);
         SkeletonEsp.Draw(this);
         EspBox.Draw(this);
         BombTimer.Draw(this);
+        if (config.HitSound.Enabled)
+        {
+            HitSound.Process(this);
+            HitSound.DrawHitTexts(this);
+        }
     }
 
 

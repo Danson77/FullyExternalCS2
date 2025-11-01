@@ -69,6 +69,10 @@ public class MainProgram:
 
         AutoAccept.Dispose();
         AutoAccept = default!;
+
+        // in MainProgram.Dispose()
+        AudioEngine.Dispose();
+
     }
 
     public static void Main()
@@ -78,6 +82,9 @@ public class MainProgram:
 
     private void InitializeComponent()
     {
+        // at the top of InitializeComponent()
+        AudioEngine.Init();
+
         var features = ConfigManager.Load();
         GameProcess = new GameProcess();
         GameProcess.Start();

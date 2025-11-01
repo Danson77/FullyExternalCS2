@@ -84,9 +84,9 @@ namespace CS2Cheat.Features
         // ---------------- Aimbot math ----------------
         private static string AimBonePos => "head";
 
-        private const float MovingToSmooth = 3.0f;
+        private const float MovingToSmooth = 4.0f;
 
-        private static readonly float SeekFov = 4.5f.DegreeToRadian();
+        private static readonly float SeekFov = 3.5f.DegreeToRadian();
         private static readonly float BreakAwayAngle = 0.3f.DegreeToRadian(); //0.15
 
         // tune these (rad-based) A + D straff movment adjsutment

@@ -152,7 +152,7 @@ public class ConfigManager
     {
         return new ConfigManager
         {
-            AimBot = true,
+            AimBot = false,
             TriggerBot = true,
             SkeletonEsp = true,
             EspAimCrosshair = true,
