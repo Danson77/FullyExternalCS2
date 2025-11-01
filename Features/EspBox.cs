@@ -112,7 +112,6 @@ public static class EspBox
         // Draw main text on top
         graphics.FontConsolas32.DrawText(default, entityName, (int)offsetX, (int)offsetY, entityNameColor);
     }
-
     private static void DrawHealthNumber(Graphics.Graphics graphics, Vector2 topLeft, Vector2 bottomRight, int health)
     {
         // Get color based on health value (e.g., red for low, green for high)

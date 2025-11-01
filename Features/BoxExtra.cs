@@ -49,88 +49,6 @@ public static class BoxExtra
         }
     }
 
-    private static readonly Dictionary<string, string> GunIcons = new(StringComparer.OrdinalIgnoreCase)
-    {
-        // Knif
-        ["knife"] = "[",
-        ["knife_t"] = "[",
-        ["knife_ct"] = "]",
-        ["bayonet"] = "p",
-        ["flipknife"] = "q",
-        ["gutknife"] = "r",
-        ["karambit"] = "s",
-        ["m9bayonet"] = "t",
-        ["tacticalknife"] = "u",
-        ["butterflyknife"] = "v",
-        ["falchionknife"] = "w",
-        ["shadowdaggers"] = "x",
-        ["paracordknife"] = "y",
-        ["survivalknife"] = "z",
-        ["ursusknife"] = "{",
-        ["navajaknife"] = "|",
-        ["nomadknife"] = "}",
-        ["stilettoknife"] = "~",
-        ["talonknife"] = "⌂",
-        ["classicknife"] = "Ç",
-
-        // Pistoles
-        ["deagle"] = "A",
-        ["elite"] = "B",
-        ["fiveseven"] = "C",
-        ["glock"] = "D",
-        ["hkp2000"] = "E",
-        ["p250"] = "F",
-        ["usp_silencer"] = "G",
-        ["tec9"] = "H",
-        ["cz75a"] = "I",
-        ["revolver"] = "J",
-
-        // SMG
-        ["mac10"] = "K",
-        ["mp9"] = "L",
-        ["mp7"] = "M",
-        ["ump45"] = "N",
-        ["p90"] = "O",
-        ["bizon"] = "P",
-
-        // Machi
-        ["ak47"] = "Q",
-        ["aug"] = "R",
-        ["famas"] = "S",
-        ["galilar"] = "T",
-        ["m4a1"] = "U",
-        ["m4a1_silencer"] = "V",
-        ["sg556"] = "W",
-
-        // Sniper
-        ["awp"] = "X",
-        ["g3sg1"] = "Y",
-        ["scar20"] = "Z",
-        ["ssg08"] = "a",
-
-        // Shotguns
-        ["mag7"] = "b",
-        ["nova"] = "c",
-        ["sawedoff"] = "d",
-        ["xm1014"] = "e",
-
-        // Negevs
-        ["m249"] = "f",
-        ["negev"] = "g",
-
-        // Non leathal
-        ["taser"] = "h",
-        ["c4"] = "o",
-
-        // Granades
-        ["flashbang"] = "i",
-        ["hegrenade"] = "j",
-        ["smokegrenade"] = "k",
-        ["molotov"] = "l",
-        ["decoy"] = "m",
-        ["incgrenade"] = "n"
-    };
-
     // Status
     private static readonly Dictionary<string, string> StatusIcons = new()
     {
@@ -183,12 +101,145 @@ public static class BoxExtra
         graphics.DrawText(text, textX, y, color, fontSize, useCustomFont);
     }
 
+    // Remove the old: private static readonly Dictionary<string, string> GunIcons = ...
+    // Keep only this:
+
     private static string GetWeaponIcon(string? weaponName)
     {
-        if (string.IsNullOrEmpty(weaponName)) return string.Empty;
-        string cleanName = weaponName.Replace("weapon_", "", StringComparison.OrdinalIgnoreCase);
-        return GunIcons.GetValueOrDefault(cleanName, "?");
+        if (string.IsNullOrWhiteSpace(weaponName))
+            return string.Empty;
+
+        var s = NormalizeWeaponName(weaponName);
+
+        // 1) Exact matches (most reliable)
+        foreach (var (k, glyph) in ExactTable)
+            if (s == k) return glyph;
+
+        // 2) Alias fixes that still might slip through
+        s = s switch
+        {
+            "usp" => "usp_silencer",
+            "usp-s" => "usp_silencer",
+            "usp-silencer" => "usp_silencer",
+            "m4" => "m4a4",
+            "m4a1s" => "m4a1_silencer",
+            "krieg" => "sg556",
+            "galil" => "galilar",
+            _ => s
+        };
+
+        foreach (var (k, glyph) in ExactTable)
+            if (s == k) return glyph;
+
+        // 3) Contains fallback (handles variants like "ak47_npe", "molotov_projectile", "weapon_glock18")
+        foreach (var (k, glyph) in ContainsTable)
+            if (s.Contains(k)) return glyph;
+
+        return "?";
     }
+
+    // ---- helpers & tables ----
+
+    private static string NormalizeWeaponName(string raw)
+    {
+        var s = raw.Trim().ToLowerInvariant();
+
+        // strip prefix
+        if (s.StartsWith("weapon_")) s = s.Substring("weapon_".Length);
+
+        // strip common suffix/noise
+        s = s
+            .Replace("_default_t", string.Empty)
+            .Replace("_default_ct", string.Empty)
+            .Replace("_projectile", string.Empty)
+            .Replace("_secondary", string.Empty)
+            .Replace("_primary", string.Empty);
+
+        // common number variants
+        s = s.Replace("glock18", "glock");
+
+        return s;
+    }
+
+    // Exact glyphs (preferred). Order doesn’t matter for exact equality.
+    private static readonly (string key, string glyph)[] ExactTable = new[]
+    {
+        // Knives
+        ("knife", "["), ("knife_t", "["), ("knife_ct", "]"),
+        ("bayonet","p"), ("flipknife","q"), ("gutknife","r"), ("karambit","s"),
+        ("m9bayonet","t"), ("tacticalknife","u"), ("butterflyknife","v"),
+        ("falchionknife","w"), ("shadowdaggers","x"), ("paracordknife","y"),
+        ("survivalknife","z"), ("ursusknife","{"), ("navajaknife","|"),
+        ("nomadknife","}"), ("stilettoknife","~"), ("talonknife","⌂"),
+        ("classicknife","Ç"),
+
+        // Pistols
+        ("deagle","A"), ("elite","B"), ("fiveseven","C"), ("glock","D"),
+        ("hkp2000","E"), ("p250","F"), ("usp_silencer","G"),
+        ("tec9","H"), ("cz75a","I"), ("revolver","J"),
+
+        // SMGs
+        ("mac10","K"), ("mp9","L"), ("mp7","M"), ("ump45","N"),
+        ("p90","O"), ("bizon","P"),
+
+        // Rifles
+        ("ak47","Q"), ("aug","R"), ("famas","S"), ("galilar","T"),
+        ("m4a1","U"), ("m4a1_silencer","V"), ("sg556","W"),
+
+        // Snipers
+        ("awp","X"), ("g3sg1","Y"), ("scar20","Z"), ("ssg08","a"),
+
+        // Shotguns
+        ("mag7","b"), ("nova","c"), ("sawedoff","d"), ("xm1014","e"),
+
+        // LMGs
+        ("m249","f"), ("negev","g"),
+
+        // Other
+        ("taser","h"), ("c4","o"),
+
+        // Grenades
+        ("flashbang","i"), ("hegrenade","j"), ("smokegrenade","k"),
+        ("molotov","l"), ("decoy","m"), ("incgrenade","n")
+    };
+    
+    // Substring fallbacks (ordered by specificity; first hit wins)
+    private static readonly (string key, string glyph)[] ContainsTable = new[]
+    {
+        // rifles first so "ak" doesn’t steal "m4a1"
+        ("ak47","Q"), ("ak","Q"),
+        ("m4a1_silencer","V"), ("m4a1","U"), ("m4","U"),
+        ("sg556","W"), ("krieg","W"),
+        ("galilar","T"), ("galil","T"),
+        ("famas","S"), ("aug","R"),
+    
+        ("awp","X"), ("ssg08","a"), ("scar20","Z"), ("g3sg1","Y"),
+    
+        ("mac10","K"), ("mp9","L"), ("mp7","M"), ("ump45","N"),
+        ("p90","O"), ("bizon","P"),
+    
+        ("deagle","A"), ("glock","D"), ("usp_silencer","G"), ("usp","G"),
+        ("p250","F"), ("tec9","H"), ("cz75a","I"), ("fiveseven","C"), ("elite","B"), ("revolver","J"),
+    
+        ("mag7","b"), ("nova","c"), ("sawedoff","d"), ("xm1014","e"),
+    
+        ("m249","f"), ("negev","g"),
+    
+        ("taser","h"), ("c4","o"),
+    
+        // nades & projectiles
+        ("incgrenade","n"), ("molotov","l"), ("smoke","k"),
+        ("hegren","j"), ("flash","i"), ("decoy","m"),
+    
+        // knives last
+        ("bayonet","p"), ("flipknife","q"), ("gutknife","r"), ("karambit","s"),
+        ("m9bayonet","t"), ("butterfly","v"), ("falchion","w"),
+        ("shadowdaggers","x"), ("paracord","y"), ("survival","z"),
+        ("ursus","{"), ("navaja","|"), ("nomad","}"),
+        ("stiletto","~"), ("talon","⌂"), ("classic","Ç"),
+        ("knife", "[")
+    };
+    
 
     private static uint SetAlpha(uint color, byte alpha)
     {
@@ -273,17 +324,21 @@ public static class BoxExtra
             graphics.DrawText(armorText, armorX, armorY, EspColor.Red, 15);
         }
 
-        // === Weapon Icon ===
+        // === Weapon Icon (CT + T) ===
         if (config.ShowWeaponIcon && !string.IsNullOrEmpty(entity.CurrentWeaponName))
         {
             string icon = GetWeaponIcon(entity.CurrentWeaponName);
-            if (!string.IsNullOrEmpty(icon))
+            if (!string.IsNullOrEmpty(icon) && icon != "?")
             {
                 int weaponY = (int)(bottomRight.Y + 25);
-                bool useCustom = graphics is ModernGraphics mg && mg.IsUndefeatedFontLoaded;
-                DrawCenteredText(graphics, icon, centerX, weaponY, EspColor.Orange, 20, useCustom);
+
+                // Force custom font (glyph sheet) so icons render regardless of side
+                DrawCenteredText(graphics, icon, centerX, weaponY, EspColor.Orange, 20, useCustomFont: true);
             }
+            // else: uncomment once to debug the raw names if needed:
+            // graphics.DrawText($"[{entity.CurrentWeaponName}]", (int)bottomRight.X + 8, (int)bottomRight.Y, EspColor.Gray, 12);
         }
+
 
         // === Emoji Status ===
         if (config.ShowFlags)
@@ -332,9 +387,13 @@ public static class BoxExtra
     }
     public static void Draw(ModernGraphics graphics)
     {
+        // 1) read config
         var fullConfig = ConfigManager.Load();
         var espConfig = fullConfig.Esp.BoxExtra;
         if (!espConfig.Enabled) return;
+
+        // 2) apply toggle this frame
+        HandleToggles();
 
         var player = graphics.GameData.Player;
         var entities = graphics.GameData.Entities;
@@ -345,8 +404,9 @@ public static class BoxExtra
             if (!entity.IsAlive() || entity.AddressBase == player.AddressBase)
                 continue;
 
-            // ——— ENEMIES ONLY ———
-            if (entity.Team == player.Team)
+            // Enemies-only unless TeamVisible == true
+            bool isTeammate = entity.Team == player.Team;
+            if (!TeamVisible && isTeammate)
                 continue;
 
             var bbox = GetEntityBoundingBox(player, entity);
@@ -355,5 +415,6 @@ public static class BoxExtra
             DrawEntityEsp(graphics, player, entity, bbox.Value, espConfig);
         }
     }
+
 
 }

@@ -44,30 +44,45 @@ public static class Radar
     }
     public static void Draw(ModernGraphics graphics)
     {
-        // 1) Process toggle key each frame
+        // Handle toggle each frame
         HandleToggles();
 
-        var config = ConfigManager.Load();
-        var radarCfg = config.Esp.Radar;
+        var cfg = ConfigManager.Load();
+        var radarCfg = cfg.Esp.Radar;
         if (!radarCfg.Enabled) return;
 
-        var player = graphics.GameData.Player;
-        if (player == null) return;
+        // --- bail if game/window not valid (menu/lobby/minimized) ---
+        var gp = graphics.GameProcess;
+        if (!gp.IsValid || !gp.HasWindow) return;
 
-        // snapshot
+        var player = graphics.GameData.Player;
+        var entities = graphics.GameData.Entities;
+        if (player == null || entities == null) return;
+
+        // Snapshot – if we can't get it, we're not in a live round
         RenderSnapshot snapshot;
         lock (player.RenderDataLock)
             snapshot = player.RenderData;
         if (snapshot == null) return;
 
-        var entities = graphics.GameData.Entities;
-        if (entities == null) return;
+        // Heuristics for menu/lobby: zero/NaN position, zero matrix, or no entities
+        if (snapshot.Position == default ||
+            float.IsNaN(snapshot.Position.X) || float.IsNaN(snapshot.Position.Y) || float.IsNaN(snapshot.Position.Z))
+            return;
 
+        // Matrix guard (Skips when view isn’t initialized yet)
+        if (snapshot.MatrixViewProjection.M11 == 0f && snapshot.MatrixViewProjection.M22 == 0f &&
+            snapshot.MatrixViewProjection.M33 == 0f && snapshot.MatrixViewProjection.M44 == 0f)
+            return;
+
+        // Optional: if you only want radar during live play, require local alive or at least someone alive
+        // if (!player.IsAlive() && entities.TrueForAll(e => !e.IsAlive())) return;
+
+        // ------- FROM HERE: your existing drawing code -------
         float centerX = radarCfg.X + radarCfg.Size / 2f;
         float centerY = radarCfg.Y + radarCfg.Size / 2f;
         float radius = radarCfg.Size / 2f;
 
-        // background + grid
         graphics.DrawCircleFilled(centerX, centerY, radius, ToUintColor(SkiaSharp.SKColors.Black.WithAlpha(160)));
         graphics.DrawCircleOutline(centerX, centerY, radius, ToUintColor(SkiaSharp.SKColors.White.WithAlpha(100)));
 
@@ -83,7 +98,6 @@ public static class Radar
 
         float pixelsPerMeter = radius / radarCfg.MaxDistance;
 
-        // local player dot + heading
         if (radarCfg.ShowLocalPlayer)
         {
             graphics.DrawCircleFilled(centerX, centerY, 5f, ToUintColor(SkiaSharp.SKColors.Cyan));
@@ -93,7 +107,7 @@ public static class Radar
                 new Vector2(centerX, centerY - 12f));
         }
 
-        // heading
+        // heading (unchanged)
         var viewMatrix = snapshot.MatrixViewProjection;
         var forwardVector = new Vector2(viewMatrix.M13, viewMatrix.M23);
         float playerYawRad = MathF.Atan2(forwardVector.X, forwardVector.Y);
@@ -104,12 +118,9 @@ public static class Radar
         {
             if (!entity.IsAlive() || entity.AddressBase == player.AddressBase) continue;
 
-            // 2) Hide teammates only when toggle is OFF (and TeamCheck is on).
-            //    When TeamVisible == true, teammates are shown as well.
-            if (config.TeamCheck && !TeamVisible && entity.Team == player.Team)
-                continue;
+            bool isTeammate = entity.Team == player.Team;
+            if (!TeamVisible && isTeammate) continue;
 
-            // world -> player-relative
             float relFwd = entity.Position.X - snapshot.Position.X;
             float relRight = entity.Position.Y - snapshot.Position.Y;
 
@@ -117,19 +128,13 @@ public static class Radar
             float distMeters = distUnits * UnitsToMeters;
             if (distMeters > radarCfg.MaxDistance) continue;
 
-            // rotate with player
             float rx = (relFwd * cosYaw) - (relRight * sinYaw);
             float ry = (relFwd * sinYaw) + (relRight * cosYaw);
 
-            // to radar pixels
             float x = centerX + rx * UnitsToMeters * pixelsPerMeter;
             float y = centerY - ry * UnitsToMeters * pixelsPerMeter;
 
-            // color by team & visibility
-            string colorHex = (entity.Team == Team.Terrorists)
-                ? radarCfg.EnemyColor
-                : radarCfg.TeamColor;
-
+            string colorHex = (entity.Team == Team.Terrorists) ? radarCfg.EnemyColor : radarCfg.TeamColor;
             byte alpha = entity.IsVisible
                 ? Convert.ToByte(radarCfg.VisibleAlpha, 16)
                 : Convert.ToByte(radarCfg.InvisibleAlpha, 16);
@@ -140,7 +145,6 @@ public static class Radar
             graphics.DrawCircleFilled(x, y, 3.5f, playerColor);
             graphics.DrawCircleOutline(x, y, 3.5f, ToUintColor(SkiaSharp.SKColors.White.WithAlpha(200)));
 
-            // facing arrow
             if (radarCfg.ShowDirectionArrow && entity.ViewAngle.HasValue)
             {
                 float entityYawRad = (entity.ViewAngle.Value.Y + 90f) * MathF.PI / 180f;

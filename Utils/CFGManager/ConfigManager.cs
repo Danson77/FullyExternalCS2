@@ -8,11 +8,6 @@ namespace CS2Cheat.Utils.CFGManager;
 public class ConfigManager
 {
     private const string ConfigFile = "config.json";
-    public bool AimBot { get; set; } = true;
-    public bool BombTimer { get; set; } = true;
-    public bool EspAimCrosshair { get; set; } = true;
-    public bool SkeletonEsp { get; set; } = true;
-    public bool TriggerBot { get; set; } = true;
     public bool TeamCheck { get; set; } = true;
 
     // Вложенные настройки ESP
@@ -152,12 +147,6 @@ public class ConfigManager
     {
         return new ConfigManager
         {
-            AimBot = false,
-            TriggerBot = true,
-            SkeletonEsp = true,
-            EspAimCrosshair = true,
-            BombTimer = true,
-            TeamCheck = false,
             Esp = new EspConfig
             {
                 BoxExtra = new EspConfig.BoxExtraConfig
@@ -191,8 +180,6 @@ public class ConfigManager
                 {
                     Enabled = true,
                     Radius = 6,
-                    Color = "FFFFFFFF",
-                    RecoilScale = 2f
                 },
             },
             HitSound = new HitSoundConfig

@@ -3,16 +3,12 @@
   "WorkspaceRootPath": "C:\\Users\\Broni\\OneDrive\\Desktop\\CS2\\CS2_Danson77_HxH\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{5E88C325-4A77-B4D0-3740-696CF147253D}|CS2_Danson77_HxH.csproj|c:\\users\\broni\\onedrive\\desktop\\cs2\\cs2_danson77_hxh\\features\\boxextra.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5E88C325-4A77-B4D0-3740-696CF147253D}|CS2_Danson77_HxH.csproj|solutionrelative:features\\boxextra.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{5E88C325-4A77-B4D0-3740-696CF147253D}|CS2_Danson77_HxH.csproj|c:\\users\\broni\\onedrive\\desktop\\cs2\\cs2_danson77_hxh\\features\\autoaccept.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5E88C325-4A77-B4D0-3740-696CF147253D}|CS2_Danson77_HxH.csproj|solutionrelative:features\\autoaccept.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{5E88C325-4A77-B4D0-3740-696CF147253D}|CS2_Danson77_HxH.csproj|c:\\users\\broni\\onedrive\\desktop\\cs2\\cs2_danson77_hxh\\features\\bombtimer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5E88C325-4A77-B4D0-3740-696CF147253D}|CS2_Danson77_HxH.csproj|solutionrelative:features\\bombtimer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5E88C325-4A77-B4D0-3740-696CF147253D}|CS2_Danson77_HxH.csproj|c:\\users\\broni\\onedrive\\desktop\\cs2\\cs2_danson77_hxh\\features\\autoaccept.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5E88C325-4A77-B4D0-3740-696CF147253D}|CS2_Danson77_HxH.csproj|solutionrelative:features\\autoaccept.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -27,25 +23,12 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "BoxExtra.cs",
-              "DocumentMoniker": "C:\\Users\\Broni\\OneDrive\\Desktop\\CS2\\CS2_Danson77_HxH\\Features\\BoxExtra.cs",
-              "RelativeDocumentMoniker": "Features\\BoxExtra.cs",
-              "ToolTip": "C:\\Users\\Broni\\OneDrive\\Desktop\\CS2\\CS2_Danson77_HxH\\Features\\BoxExtra.cs",
-              "RelativeToolTip": "Features\\BoxExtra.cs",
-              "ViewState": "AgIAADYBAAAAAAAAAAAAAGUBAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-11-01T18:49:08.429Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
               "Title": "AutoAccept.cs",
               "DocumentMoniker": "C:\\Users\\Broni\\OneDrive\\Desktop\\CS2\\CS2_Danson77_HxH\\Features\\AutoAccept.cs",
               "RelativeDocumentMoniker": "Features\\AutoAccept.cs",
               "ToolTip": "C:\\Users\\Broni\\OneDrive\\Desktop\\CS2\\CS2_Danson77_HxH\\Features\\AutoAccept.cs",
               "RelativeToolTip": "Features\\AutoAccept.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAADQAAAAAAAAAAAAQwD8AAAAgAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-11-01T02:18:15.551Z",
               "EditorCaption": ""
@@ -58,7 +41,7 @@
               "RelativeDocumentMoniker": "Features\\BombTimer.cs",
               "ToolTip": "C:\\Users\\Broni\\OneDrive\\Desktop\\CS2\\CS2_Danson77_HxH\\Features\\BombTimer.cs",
               "RelativeToolTip": "Features\\BombTimer.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAABbAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADIAAAAWAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-11-01T02:18:11.341Z",
               "EditorCaption": ""

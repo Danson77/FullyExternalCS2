@@ -1,7 +1,8 @@
-using CS2Cheat.Data.Entity;
+﻿using CS2Cheat.Data.Entity;
 using CS2Cheat.Data.Game;
 using CS2Cheat.Graphics;
 using CS2Cheat.Utils;
+using CS2Cheat.Utils.CFGManager;
 using SharpDX;
 using Color = SharpDX.Color;
 
@@ -11,11 +12,10 @@ public static class EspAimCrosshair
 {
     private static Vector3 _pointClip = Vector3.Zero;
 
-    private static Vector3 GetPositionScreen(GameProcess gameProcess, GameData gameData)
+    private static Vector3 GetPositionScreen(GameProcess gameProcess, GameData gameData, Player player)
     {
         var screenSize = gameProcess.WindowRectangleClient.Size;
         var aspectRatio = (double)screenSize.Width / screenSize.Height;
-        var player = gameData.Player;
         //var fovY = ((double)Player.Fov).DegreeToRadian();
         var fovY = GraphicsMath.DegreeToRadian((double)Player.Fov);
         var fovX = fovY * aspectRatio;
@@ -35,13 +35,22 @@ public static class EspAimCrosshair
 
     public static void Draw(Graphics.Graphics graphics)
     {
-        var pointScreen = GetPositionScreen(graphics.GameProcess, graphics.GameData);
-        Draw(graphics, new Vector2(pointScreen.X, pointScreen.Y));
+        var player = graphics.GameData.Player;
+        if (player == null)
+            return;
+
+        var cfg = ConfigManager.Load();
+        var aimCfg = cfg?.Esp?.AimCrosshair ?? new ConfigManager.EspConfig.AimCrosshairConfig();
+        if (!aimCfg.Enabled)
+            return;
+
+        var pointScreen = GetPositionScreen(graphics.GameProcess, graphics.GameData, player);
+        Draw(graphics, new Vector2(pointScreen.X, pointScreen.Y), aimCfg);
     }
 
-    private static void Draw(Graphics.Graphics graphics, Vector2 pointScreen)
+    private static void Draw(Graphics.Graphics graphics, Vector2 pointScreen, ConfigManager.EspConfig.AimCrosshairConfig aimCfg)
     {
-        const int crosshairRadius = 6;
+        var crosshairRadius = aimCfg.Radius;
         DrawCrosshair(graphics, pointScreen, crosshairRadius);
     }
 
