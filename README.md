@@ -26,7 +26,7 @@
 -Ton of features:
 Rewrote Triger bot to the point I'm stuck, where it will trigger sometimes when a friend or prop is in the way, since I'm using Capsuls to create safety areas around friends
 
-Aim bot is out of space, made it VAC proof since now it checks gameplay integrity, I had to implement random small overshoots and imperfect swing towards targets, which was after I totally re-wrote the aimbot since it was based on mouse button fire down, which is like LOL
+!!!!!!!!!!!!Aim bot !!!!!!!!!!!!!! VAC WILL TRIGGER GAMPLAYE IREGULARITY WITH THIS. I had to implement random small overshoots and imperfect swing towards targets, which was after I totally re-wrote the aimbot since it was based on mouse button fire down
 
 RADAR that goes over your current game radar, make sure it's zoomed out to max so you can see the whole map in your game settings, then size should be 1.0, so everything is adjustable
 
