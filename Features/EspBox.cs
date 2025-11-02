@@ -98,7 +98,7 @@ public static class EspBox
 
         // Positioning
         float offsetX = boundingBox.Item1.X + (boundingBox.Item2.X - boundingBox.Item1.X) / 2 - textWidth / 2;
-        float offsetY = boundingBox.Item1.Y - 20f; // Move above entity box
+        float offsetY = boundingBox.Item1.Y - 30f; // Move above entity box
 
         int outlineOffset = 1; // Thickness of outline
         Color outlineColor = Color.Black;
