@@ -3,83 +3,128 @@ using Process.NET.Native.Types;
 using static CS2Cheat.Utils.Offsets;
 using Color = SharpDX.Color;
 
-namespace CS2Cheat.Features;
-
-internal class BombTimer(Graphics.Graphics graphics) : ThreadedServiceBase
+namespace CS2Cheat.Features
 {
-    private static string _bombPlanted = string.Empty;
-    private static string _bombSite = string.Empty;
-    private static bool _isBombPlanted;
-    private static float _defuseLeft;
-    private static float _timeLeft;
-
-    private static bool _beingDefused;
-    private IntPtr _globalVars;
-    private IntPtr _plantedC4;
-
-    private float _intervalPerTick = 1.0f / 64.0f;
-    private float _currentServerTime;
-    private int _lastServerTick;
-    protected override void FrameAction()
+    internal class BombTimer(Graphics.Graphics graphics) : ThreadedServiceBase
     {
-        // Main Time Ticket
-        // --- read globals / interval ---
-        _globalVars = graphics.GameProcess.ModuleClient.Read<IntPtr>(Offsets.dwGlobalVars);
+        private static string _bombPlanted = string.Empty;
+        private static string _bombSite = string.Empty;
+        private static bool _isBombPlanted;
+        private static bool _will_defuse;
+        private static bool _beingDefused;
+        private static float _defuseLeft;
+        private static float defuseLeft;
+        private static float _timeLeft;
+        private static float timeLeft;
+        private static bool _isDefused;
 
-        // --- read globals / interval ---
-        _globalVars = graphics.GameProcess.ModuleClient.Read<IntPtr>(Offsets.dwGlobalVars);
-        _intervalPerTick = graphics.GameProcess.Process.Read<float>(_globalVars + Offsets.m_nCurrentTickThisFrame);
+        private IntPtr _globalVars;
+        private IntPtr _plantedC4;
 
-        var eng = graphics.GameProcess.ModuleEngine;
-        if (eng != null)
+        private float _intervalPerTick = 1.0f / 64.0f;
+        private float _currentServerTime;
+        private static float _c4BlowStored = 0f;     // c4 blow time for this plant
+
+        protected override void FrameAction()
         {
-            var ngc = eng.Read<IntPtr>(Offsets.engine2_dll.dwNetworkGameClient);
-            int tick = graphics.GameProcess.Process.Read<int>(ngc + Offsets.engine2_dll.dwNetworkGameClient_serverTickCount);
+            // --- read globals / interval ---
+            _globalVars = graphics.GameProcess.ModuleClient.Read<IntPtr>(Offsets.dwGlobalVars);
+            _intervalPerTick = graphics.GameProcess.Process.Read<float>(_globalVars + Offsets.m_nCurrentTickThisFrame);
+            _currentServerTime += (_intervalPerTick / 64) * 1;
 
-            // only move forward (prevents jitter/backwards snaps)
-            if (tick >= _lastServerTick)
+            // <<< ИСПОЛЬЗУЕМ ТОЧНОЕ ВРЕМЯ ИЗ СЕРВЕРНЫХ ТИКОВ
+            //var serverTickCount = graphics.GameProcess.Process.Read<int>(graphics.GameProcess.ModuleEngine.Read<IntPtr>(Offsets.engine2_dll.dwNetworkGameClient) + Offsets.engine2_dll.dwNetworkGameClient_serverTickCount);
+            //_currentServerTime = serverTickCount * 0.015625f;
+
+            // --- locate planted C4 base pointer ---
+            var tempC4 = graphics.GameProcess.ModuleClient.Read<IntPtr>(Offsets.client_dll.dwPlantedC4);
+            _plantedC4 = graphics.GameProcess.Process.Read<IntPtr>(tempC4);
+
+            // --- planted flag ---
+            _isBombPlanted = graphics.GameProcess.ModuleClient.Read<bool>(Offsets.dwPlantedC4 - 0x8);
+
+            if (!_isBombPlanted)
             {
-                _currentServerTime = tick * _intervalPerTick;
-                _lastServerTick = tick;
+                // Bomb isn't planted anymore: if not defused, treat as round over
+                if (_isDefused)
+                {
+                    // Keep defused status for a moment, but zero times
+                    _timeLeft = 0f;
+                    _defuseLeft = 0f;
+                    _beingDefused = false;
+                }
+                return;
+            }
+
+            // --- bomb site ---
+            int site = graphics.GameProcess.Process.Read<int>(_plantedC4 + Offsets.m_nBombSite);
+            _bombSite = site == 1 ? "B" : "A";
+            _bombPlanted = $"Bomb is planted on site: {_bombSite}";
+
+            // --- read current blow time for this instance ---
+            var c4Blow = graphics.GameProcess.Process.Read<float>(_plantedC4 + Offsets.m_flC4Blow);
+
+            // --- new bomb instance detection & normalization ---
+            if (Math.Abs(c4Blow - _c4BlowStored) > 0.01f)
+            {
+                // New plant detected – normalize timer:
+                _c4BlowStored = c4Blow;
+                _currentServerTime = _c4BlowStored - 40.0f;  // so timeLeft starts at ~40
+            }
+
+            // --- raw / clamped bomb time ---
+            timeLeft = _c4BlowStored - _currentServerTime;
+            _timeLeft = Math.Max(timeLeft, 0f);
+
+            // --- defuse logic ---
+            _beingDefused = graphics.GameProcess.Process.Read<bool>(_plantedC4 + Offsets.m_bBeingDefused);
+            var defuseCountDown = graphics.GameProcess.Process.Read<float>(_plantedC4 + Offsets.m_flDefuseCountDown);
+
+            defuseLeft = defuseCountDown - _currentServerTime;
+            _defuseLeft = Math.Max(defuseLeft, 0f);
+
+            // Can defuse?
+            _will_defuse = _beingDefused && (c4Blow - _currentServerTime) > (_beingDefused ? defuseCountDown - _currentServerTime : 0f);
+
+            // --- bomb defused flag from game ---
+            bool defusedFlag = graphics.GameProcess.Process.Read<bool>(_plantedC4 + Offsets.m_bBombDefused);
+            if (defusedFlag || (_beingDefused && _defuseLeft <= 0.001f))
+            {
+                MarkDefused();
+                return;
             }
         }
-        else
+
+        private static void MarkDefused()
         {
-            _currentServerTime += _intervalPerTick;
+            _isDefused = true;
+            _isBombPlanted = false;
+            _beingDefused = false;
+            _timeLeft = 0f;
+            _defuseLeft = 0f;
         }
 
-        // Main Is Planted
-        var _tempC4 = graphics.GameProcess.ModuleClient.Read<IntPtr>(Offsets.client_dll.dwPlantedC4);
-        if (_tempC4 == IntPtr.Zero) return;
-        _plantedC4 = graphics.GameProcess.Process.Read<IntPtr>(_tempC4);
+        public static void Draw(Graphics.Graphics graphics)
+        {
+            // nothing relevant
+            if (!_isBombPlanted && !_isDefused) return;
 
+            // Planted, active
+            graphics.FontAzonix64.DrawText(default, $"Bomb planted on site: {_bombSite}", 4, 540, Color.Orange);
 
-        // Bomb Site
-        _isBombPlanted = graphics.GameProcess.ModuleClient.Read<bool>(Offsets.dwPlantedC4 - 0x8);
-        if (_isBombPlanted)
-            _bombSite = graphics.GameProcess.Process.Read<int>(_plantedC4 + Offsets.m_nBombSite) == 1 ? "B" : "A";
-            _bombPlanted = _isBombPlanted ? $"Bomb is planted on site: {_bombSite}" : string.Empty;
+            if (_timeLeft > 0)
+                graphics.FontAzonix64.DrawText(default, $"Time left: {_timeLeft:0.00} seconds", 4, 570, Color.OrangeRed);
+            else
+                graphics.FontAzonix64.DrawText(default, $"Time left: !!NO TIME!!", 4, 570, Color.OrangeRed);
 
-        // Bomb Time Left
-        var _c4Blow = graphics.GameProcess.Process.Read<float>(_plantedC4 + Offsets.m_flC4Blow);
-        _timeLeft = _c4Blow - _currentServerTime;
-        _timeLeft = Math.Max(_timeLeft, 0);
+            if (_beingDefused && _defuseLeft > 0f)
+                graphics.FontAzonix64.DrawText(default, $"Defuse time: {_defuseLeft:0.00} seconds", 4, 600, Color.Cyan);
 
-        // Defusing
-        var _defuseCountDown = graphics.GameProcess.Process.Read<float>(_plantedC4 + Offsets.m_flDefuseCountDown);
-        _beingDefused = graphics.GameProcess.Process.Read<bool>(_plantedC4 + Offsets.m_bBeingDefused);
-        _defuseLeft = _beingDefused ? _defuseCountDown - _currentServerTime : 0f;
-        _defuseLeft = Math.Max(_defuseLeft, 0);
-    }
+            if (_isDefused)
+                graphics.FontAzonix64.DrawText(default, $"Defuse time: !!--Bomb DEFUSED--!!", 4, 600, Color.Cyan);
 
-    public static void Draw(Graphics.Graphics graphics)
-    {
-        if (!_isBombPlanted) return;
-
-        graphics.FontAzonix64.DrawText(default, $"Bomb planted on site: {_bombSite}", 4, 500, Color.Orange);
-        graphics.FontAzonix64.DrawText(default, $"Time left: {_timeLeft:0.00} seconds", 4, 530, Color.OrangeRed);
-
-        if (_beingDefused && _defuseLeft > 0f)
-            graphics.FontAzonix64.DrawText(default, $"Defuse time: {_defuseLeft:0.00} seconds", 4, 560, Color.Cyan);
+            if (_beingDefused)
+                graphics.FontAzonix64.DrawText(default, $"Will Defuse: {_will_defuse}", 4, 630, Color.Cyan);
+        }
     }
 }

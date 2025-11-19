@@ -5,6 +5,7 @@ using CS2Cheat.Utils;
 using WindowsInput;
 using WindowsInput.Native;
 using Keys = Process.NET.Native.Types.Keys;
+using System.Runtime.InteropServices;
 
 namespace CS2Cheat.Features
 {
@@ -16,11 +17,19 @@ namespace CS2Cheat.Features
         private GameProcess GameProcess { get; }
         private GameData GameData { get; }
 
-        private static readonly Keys DuckToggleKey = Keys.OemQuestion; // '?'
-        private bool _isEnabled = true;
-        private bool _toggleLatch = false;
+        // Separate toggles
+        private static readonly Keys SwitchToggleKey = Keys.OemQuestion; // '?'
+
+        private bool _switchEnabled = true;
+        private bool _switchToggleLatch = false;
 
         private bool _ctrlHeld = false;
+        private bool _spaceHeld = false;
+
+        // Win32 to check key state directly (more reliable for spacebar)
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int vKey);
+        private const int VK_SPACE = 0x20;
 
         public AutoDuck(GameProcess gameProcess, GameData gameData)
         {
@@ -30,33 +39,85 @@ namespace CS2Cheat.Features
 
         protected override void FrameAction()
         {
-            // Toggle on/off
-            if (DuckToggleKey.IsKeyDown() && !_toggleLatch)
+            // ==========================
+            // Handle toggles
+            // ==========================
+
+            // AutoDuck toggle ( ? )
+            if (SwitchToggleKey.IsKeyDown() && !_switchToggleLatch)
             {
-                _isEnabled = !_isEnabled;
-                _toggleLatch = true;
-                Console.WriteLine($"[+]AutoDuck: {(_isEnabled ? "ON" : "OFF")}");
+                _switchEnabled = !_switchEnabled;
+                _switchToggleLatch = true;
+                Console.WriteLine($"[+] AutoDuck or BunnyHop: {(_switchEnabled ? "AutoDuck" : "BunnyHop")}");
             }
-            else if (!DuckToggleKey.IsKeyDown() && _toggleLatch)
+            else if (!SwitchToggleKey.IsKeyDown() && _switchToggleLatch)
             {
-                _toggleLatch = false;
+                _switchToggleLatch = false;
             }
 
-            if (!_isEnabled) { EnsureCtrlReleased(); return; }
-            if (!GameProcess.IsValid || !GameData.Player.IsAlive()) { EnsureCtrlReleased(); return; }
+            // ==========================
+            // Sanity checks
+            // ==========================
 
-            // Simple rule: while Space is held, hold CTRL; release when Space is up
-            bool spaceDown = Keys.Space.IsKeyDown();
-
-            if (spaceDown && !_ctrlHeld)
+            if (!GameProcess.IsValid || !GameData.Player.IsAlive())
             {
-                _input.Keyboard.KeyDown(VirtualKeyCode.CONTROL);
-                _ctrlHeld = true;
+                EnsureCtrlReleased();
+                return;
             }
-            else if (!spaceDown && _ctrlHeld)
+
+            bool spaceDown = (GetAsyncKeyState(VK_SPACE) & 0x8000) != 0;
+            _spaceHeld = spaceDown;
+
+            // ==========================
+            // AUTO-DUCK WHILE HOLDING SPACE
+            // ==========================
+            if (_switchEnabled)
             {
-                _input.Keyboard.KeyUp(VirtualKeyCode.CONTROL);
-                _ctrlHeld = false;
+                if (spaceDown && !_ctrlHeld)
+                {
+                    _input.Keyboard.KeyDown(VirtualKeyCode.LCONTROL);
+                    _ctrlHeld = true;
+                }
+                else if (!spaceDown && _ctrlHeld)
+                {
+                    _input.Keyboard.KeyUp(VirtualKeyCode.LCONTROL);
+                    _ctrlHeld = false;
+                }
+            }
+            else
+            {
+                // Duck feature disabled -> make sure we don't keep CTRL stuck
+                if (_ctrlHeld)
+                {
+                    _input.Keyboard.KeyUp(VirtualKeyCode.LCONTROL);
+                    _ctrlHeld = false;
+                }
+            }
+
+            // ==========================
+            // BUNNY HOP LOGIC
+            // ==========================
+            // Only works while holding space, and player is on ground
+            if (!_switchEnabled && spaceDown && IsOnGround())
+            {
+                _input.Keyboard.KeyDown(VirtualKeyCode.SPACE);
+                Thread.Sleep(10);
+                _input.Keyboard.KeyUp(VirtualKeyCode.SPACE);
+            }
+        }
+
+        private bool IsOnGround()
+        {
+            try
+            {
+                // Check m_fFlags from player entity (bitmask)
+                // 1 << 0 = on ground (0x1)
+                int flags = GameProcess.Process.Read<int>(GameData.Player.AddressBase + Offsets.m_fFlags);
+                return (flags & 1) != 0;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -64,7 +125,7 @@ namespace CS2Cheat.Features
         {
             if (_ctrlHeld)
             {
-                _input.Keyboard.KeyUp(VirtualKeyCode.CONTROL);
+                _input.Keyboard.KeyUp(VirtualKeyCode.LCONTROL);
                 _ctrlHeld = false;
             }
         }

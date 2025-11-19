@@ -32,11 +32,12 @@ public class MainProgram:
     private ModernGraphics ModernGfx { get; set; } = null!;
     private TriggerBot Trigger { get; set; } = null!;
 
-    private AimBot AimBot { get; set; } = null!;
+    //private AimBot AimBot { get; set; } = null!;
     private AntiFlash AntiFlash { get; set; } = null!;
     private AutoAccept AutoAccept { get; set; } = null!;
+
     private BombTimer BombTimer { get; set; } = null!;
-    //private AutoDuck AutoDuck { get; set; } = null!;
+    private AutoDuck AutoDuck { get; set; } = null!;
 
     public void Dispose()
     {
@@ -55,14 +56,14 @@ public class MainProgram:
         Trigger.Dispose();
         Trigger = default!;
 
-        AimBot.Dispose();
-        AimBot = default!;
+        //AimBot.Dispose();
+        //AimBot = default!;
 
         BombTimer.Dispose(); 
         BombTimer = default!;
 
-        //AutoDuck.Dispose();
-        //AutoDuck = default!;
+        AutoDuck.Dispose();
+        AutoDuck = default!;
 
         AntiFlash.Dispose();
         AntiFlash = default!;
@@ -98,29 +99,26 @@ public class MainProgram:
         Graphics = new Graphics.Graphics(GameProcess, GameData, WindowOverlay);
         Graphics.Start();
 
-        Trigger = new TriggerBot(GameProcess, GameData);
-        Trigger.Start();
-
-
-        AimBot = new AimBot(GameProcess, GameData);
-        AimBot.Start();
-
-        // NEW: single renderer that draws everything (Radar, BombTimer, Spectators, HitText)
         ModernGfx = new ModernGraphics(GameProcess, GameData);
         ModernGfx.Start();
 
-        BombTimer = new BombTimer(Graphics); 
+        Trigger = new TriggerBot(GameProcess, GameData);
+        Trigger.Start();
+
+        //AimBot = new AimBot(GameProcess, GameData);
+        //AimBot.Start();
+
+        BombTimer = new BombTimer(Graphics);
         BombTimer.Start();
 
-        //AutoDuck = new AutoDuck(GameProcess, GameData);
-        //AutoDuck.Start();
+        AutoDuck = new AutoDuck(GameProcess, GameData);
+        AutoDuck.Start();
 
         AntiFlash = new AntiFlash(Graphics);
         AntiFlash.Start();
 
         AutoAccept = new AutoAccept(GameProcess, GameData);
         AutoAccept.Start();
-
 
         SetWindowDisplayAffinity(WindowOverlay!.Window.Handle, 0x00000011); //obs bypass
     }
