@@ -1,0 +1,69 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0-windows</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <UseWindowsForms>true</UseWindowsForms>
+        <UseWpf>true</UseWpf>
+        <LangVersion>latest</LangVersion>
+        <Platforms>AnyCPU;x64;x86</Platforms>
+        <ApplicationIcon>assets\logo.ico</ApplicationIcon>
+        <Version>1.7</Version>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <PlatformTarget>x64</PlatformTarget>
+        <Prefer32bit>false</Prefer32bit>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <PlatformTarget>AnyCPU</PlatformTarget>
+    </PropertyGroup>
+	
+    <ItemGroup>
+		<PackageReference Include="NAudio" Version="2.2.1" />
+		<PackageReference Include="Serilog" Version="4.3.0" />
+		<PackageReference Include="System.Net.Http" Version="4.3.4" />
+		<PackageReference Include="System.Text.Json" Version="9.0.10" />
+		<PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
+		<PackageReference Include="System.Drawing.Common" Version="9.0.10" />
+		<PackageReference Include="System.Numerics.Vectors" Version="4.6.1" />
+		<PackageReference Include="Silk.NET.OpenGL" Version="2.22.0" />
+		<PackageReference Include="Silk.NET.Windowing" Version="2.22.0" />
+		<PackageReference Include="Silk.NET.Input" Version="2.22.0" />
+		<PackageReference Include="SkiaSharp" Version="3.119.1" />
+        <PackageReference Include="GameOverlay.Net" Version="4.3.1" />
+		<PackageReference Include="Overlay.NET" Version="1.0.2" />
+        <PackageReference Include="InputSimulator" Version="1.0.4" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <PackageReference Include="SharpDX.Direct3D9" Version="4.2.0" />
+        <PackageReference Include="SharpDX.DXGI" Version="4.2.0" />		
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="assets\" />
+    </ItemGroup>
+
+	<ItemGroup>
+		<None Include="assets\fonts\undefeated.ttf">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>false</ExcludeFromSingleFile>
+		</None>
+		<None Include="assets\fonts\emoji.ttf">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>false</ExcludeFromSingleFile>
+		</None>
+		<None Include="assets\sounds\hit.wav">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>false</ExcludeFromSingleFile>
+		</None>
+		<None Include="assets\sounds\headshot.wav">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>false</ExcludeFromSingleFile>
+		</None>
+	</ItemGroup>
+
+</Project>
