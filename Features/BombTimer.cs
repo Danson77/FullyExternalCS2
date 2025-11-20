@@ -30,7 +30,7 @@ namespace CS2Cheat.Features
             // --- read globals / interval ---
             _globalVars = graphics.GameProcess.ModuleClient.Read<IntPtr>(Offsets.dwGlobalVars);
             _intervalPerTick = graphics.GameProcess.Process.Read<float>(_globalVars + Offsets.m_nCurrentTickThisFrame);
-            _currentServerTime += (_intervalPerTick / 64) * 1;
+            _currentServerTime += (_intervalPerTick / 64) * 10;
 
             // <<< ИСПОЛЬЗУЕМ ТОЧНОЕ ВРЕМЯ ИЗ СЕРВЕРНЫХ ТИКОВ
             //var serverTickCount = graphics.GameProcess.Process.Read<int>(graphics.GameProcess.ModuleEngine.Read<IntPtr>(Offsets.engine2_dll.dwNetworkGameClient) + Offsets.engine2_dll.dwNetworkGameClient_serverTickCount);
