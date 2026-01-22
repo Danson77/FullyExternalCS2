@@ -2,7 +2,7 @@
 using CS2Cheat.Data.Game;
 using CS2Cheat.Utils;
 using CS2Cheat.Core;
-using SharpDX; // Vector3
+using SharpDX; // Vector2, Vector3
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -39,12 +39,14 @@ namespace CS2Cheat.Features
         // vertical speed limit (don’t trigger while flying / big jumps)
         private const float MaxVelocityZ = 18f;
 
-        // teammate blocker radius and depth margin (left here in case you re-use later)
+        // recoil filter: only shoot when recoil is small / early in spray
+        private const int MaxShotsFired = 2;      // allow first 1–2 bullets only
+        private const float MaxPunchLen = 1.8f;   // how much aim punch we tolerate
+
+        // teammate blocker radius / margin (kept in case you reuse later)
         public const float teammateRadius = 7.0f;
         public const float depthMargin = 2.0f;
 
-        // how close to the *edge* of the hit-sphere we are allowed to fire
-        // 1.0 = full radius (loose), 0.5 = only center half (very tight)
         public const float HitTightness = 0.75f;   // unused now, but kept
 
         // ------------------ Toggles ------------------
@@ -78,7 +80,6 @@ namespace CS2Cheat.Features
         }
 
         // ------------------ Helpers ------------------
-        // Attempts to read a numeric team value from various common fields/properties
         private static int GetTeam(object? obj)
         {
             if (obj == null) return 0;
@@ -86,7 +87,6 @@ namespace CS2Cheat.Features
             try
             {
                 var t = obj.GetType();
-                // all likely team-related field/property names
                 string[] names = { "Team", "m_iTeamNum", "iTeamNum", "team" };
 
                 foreach (var n in names)
@@ -106,7 +106,138 @@ namespace CS2Cheat.Features
             }
             catch { }
 
-            return 0; // default if nothing found
+            return 0;
+        }
+
+        // ---- REFLECTION HELPERS (same idea as your aimbot) ----
+        private static bool TryGetAimPunch(object me, out Vector2 punch)
+        {
+            punch = Vector2.Zero;
+            if (me == null) return false;
+
+            var t = me.GetType();
+            object? val = null;
+
+            // Look for AimPunch-like property/field
+            foreach (var n in new[] { "AimPunchAngle", "m_aimPunchAngle", "AimPunch", "aimPunch" })
+            {
+                var p = t.GetProperty(n, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (p != null)
+                {
+                    val = p.GetValue(me);
+                    if (val != null) break;
+                }
+
+                var f = t.GetField(n, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (f != null)
+                {
+                    val = f.GetValue(me);
+                    if (val != null) break;
+                }
+            }
+
+            if (val == null) return false;
+
+            // Try to coerce whatever we found into SharpDX.Vector2
+            switch (val)
+            {
+                case Vector2 v2:
+                    punch = v2;
+                    return true;
+
+                case Vector3 v3:
+                    punch = new Vector2(v3.X, v3.Y);
+                    return true;
+
+                case System.Numerics.Vector2 nv2:
+                    punch = new Vector2(nv2.X, nv2.Y);
+                    return true;
+
+                case System.Numerics.Vector3 nv3:
+                    punch = new Vector2(nv3.X, nv3.Y);
+                    return true;
+
+                default:
+                    try
+                    {
+                        // last-resort: convert via dynamic if the type is similar
+                        var xProp = val.GetType().GetProperty("X");
+                        var yProp = val.GetType().GetProperty("Y");
+                        if (xProp != null && yProp != null)
+                        {
+                            float x = Convert.ToSingle(xProp.GetValue(val));
+                            float y = Convert.ToSingle(yProp.GetValue(val));
+                            punch = new Vector2(x, y);
+                            return true;
+                        }
+                    }
+                    catch { }
+                    break;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetShotsFired(object me, out int shots)
+        {
+            shots = 0;
+            if (me == null) return false;
+
+            var t = me.GetType();
+            object? val = null;
+
+            foreach (var n in new[] { "ShotsFired", "m_iShotsFired", "shotsFired" })
+            {
+                var p = t.GetProperty(n, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (p != null)
+                {
+                    val = p.GetValue(me);
+                    if (val != null) break;
+                }
+
+                var f = t.GetField(n, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (f != null)
+                {
+                    val = f.GetValue(me);
+                    if (val != null) break;
+                }
+            }
+
+            if (val == null) return false;
+
+            try
+            {
+                shots = Convert.ToInt32(val);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // ---- recoil “stability” check using reflection-based punch + shots ----
+        private bool IsRecoilStable(Player me)
+        {
+            // Shots fired
+            int shotsFired = 0;
+            if (TryGetShotsFired(me, out var s))
+                shotsFired = s;
+
+            // Too deep into spray → skip trigger
+            if (shotsFired >= MaxShotsFired)
+                return false;
+
+            // Aim punch magnitude
+            if (TryGetAimPunch(me, out var punch))
+            {
+                float len = punch.Length();
+                if (len > MaxPunchLen)
+                    return false;
+            }
+
+            // If we can't read punch at all, we still at least gated by shots fired.
+            return true;
         }
 
         // engine-style entity lookup from crosshair index (dwEntityList pattern)
@@ -116,19 +247,15 @@ namespace CS2Cheat.Features
             if (GameProcess.ModuleClient == null) return IntPtr.Zero;
             if (GameProcess.Process == null) return IntPtr.Zero;
 
-            // 1) local pawn
             var localPawn = GameProcess.ModuleClient.Read<IntPtr>(Offsets.dwLocalPlayerPawn);
             if (localPawn == IntPtr.Zero) return IntPtr.Zero;
 
-            // 2) engine crosshair entity index
             int entityId = GameProcess.Process.Read<int>(localPawn + Offsets.m_iIDEntIndex);
             if (entityId < 0) return IntPtr.Zero;
 
-            // 3) resolve index -> entity via dwEntityList
             var entityList = GameProcess.ModuleClient.Read<IntPtr>(Offsets.dwEntityList);
             if (entityList == IntPtr.Zero) return IntPtr.Zero;
 
-            // standard CS2 pattern
             IntPtr entry = GameProcess.Process.Read<IntPtr>(
                 entityList + 0x8 * (entityId >> 9) + 0x10);
             if (entry == IntPtr.Zero) return IntPtr.Zero;
@@ -138,7 +265,7 @@ namespace CS2Cheat.Features
             return entPtr;
         }
 
-        // ---------- Targeting (simplified: use engine crosshair entity) ----------
+        // ---------- Targeting (simplified: engine crosshair entity) ----------
         private bool FindTarget(out Entity? target, out bool isAlly)
         {
             target = null;
@@ -147,44 +274,34 @@ namespace CS2Cheat.Features
             var me = GameData.Player;
             if (me == null || !me.IsAlive()) return false;
 
-            // optional: don’t trigger when flying / huge vertical speed
+            // don’t trigger while flying / huge vertical speed
             if (Math.Abs(me.Velocity.Z) > MaxVelocityZ)
                 return false;
 
             int myTeam = GetTeam(me);
             if (myTeam == 0)
             {
-                // fallback in case GetTeam fails
                 try { myTeam = (int)me.Team; } catch { myTeam = 0; }
             }
 
-            // ask the engine: who is under the crosshair?
             IntPtr entPtr = GetCrosshairEntityPtr();
             if (entPtr == IntPtr.Zero) return false;
 
-            // read target team
             int entityTeam = GameProcess.Process.Read<int>(entPtr + Offsets.m_iTeamNum);
             if (entityTeam <= 0) return false;
 
-            // teammate?
             if (entityTeam == myTeam)
             {
                 if (!_teamTriggerEnabled)
-                {
-                    // teammate, and we’re not allowed to shoot teammates -> no target
                     return false;
-                }
 
-                // team trigger is enabled; we treat this as ally target
                 isAlly = true;
             }
             else
             {
-                // normal enemy target
                 isAlly = false;
             }
 
-            // Try to map raw pointer -> Entity object from GameData.Entities
             foreach (var e in GameData.Entities)
             {
                 if (e == null) continue;
@@ -195,8 +312,6 @@ namespace CS2Cheat.Features
                 }
             }
 
-            // Even if we fail to map to Entity, we still have a valid enemy in crosshair.
-            // For your current logic, you only care about "haveTarget" bool.
             return true;
         }
 
@@ -269,6 +384,13 @@ namespace CS2Cheat.Features
 
             var me = GameData.Player;
             if (me == null || !me.IsAlive())
+            {
+                if (_holding) StopHold(false);
+                return;
+            }
+
+            // recoil-aware gate using the same AimPunch reflection logic as aimbot
+            if (!IsRecoilStable(me))
             {
                 if (_holding) StopHold(false);
                 return;
